@@ -31,7 +31,7 @@ pip install python-telegram-bot sqlite3
 5. Use the available commands to interact with the bot and manage chore names and schedules.
 
 ## Author
-This script was created by [Wouter van der Toorren](https://github.com/TorreiroW).
+This script was created by [W. van der Toorren](https://github.com/TorreiroW).
 
 ## License
 This project is licensed under the GPL-3.0 License. See the [LICENSE](LICENSE) file for more details.
