@@ -1,24 +1,15 @@
-"""
-Telegram Bot for Chore Rota
-
-This script implements a Telegram bot that allows users to schedule names for different days of the week.
-
-Author: W. van der Toorren (wvdtoorren)
-License: GPL-3.0 License
-"""
-
 import sqlite3
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, ConversationHandler, CallbackContext
 import datetime
 
-# Variables for user data
+# Variabelen voor gebruikersgegevens
 user_id = None
 user_name = None
 
 SET_DAY, SET_NAME = range(2)
 
-# Function to clear all data for the current Telegram client from the database
+# Functie om alle gegevens voor de huidige Telegram-client uit de database te verwijderen
 def clear_all(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     user_name = update.effective_user.username
@@ -34,7 +25,7 @@ def handle_invalid_command(update, context):
     update.message.reply_text("Invalid command. Please use a valid command.")
 
 
-# Function to display the weekday and corresponding name for tomorrow
+# Functie om de weekdag en bijbehorende naam voor morgen weer te geven
 def show_tomorrow(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     conn = context.bot_data['conn']
@@ -55,7 +46,7 @@ def show_tomorrow(update: Update, context: CallbackContext):
     update.message.reply_text(message)
 
 
-# Function to display the list of scheduled days and names
+# Functie om de lijst met geplande dagen en namen weer te geven
 def show_schedule(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     conn = context.bot_data['conn']
@@ -74,7 +65,7 @@ def show_schedule(update: Update, context: CallbackContext):
     update.message.reply_text(message)
 
 
-# Function to retrieve the name associated with the current day
+# Functie om de naam op te halen die is gekoppeld aan de huidige dag
 def show_name(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     conn = context.bot_data['conn']
@@ -93,7 +84,7 @@ def show_name(update: Update, context: CallbackContext):
     update.message.reply_text(message)
 
 
-# Function to save the day and name in the database
+# Functie om de dag en naam op te slaan in de database
 def set_day(update: Update, context: CallbackContext):
     reply_keyboard = [['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']]
     update.message.reply_text(
@@ -129,18 +120,19 @@ def save_name(update: Update, context: CallbackContext):
     return ConversationHandler.END
 
 
-# Function to restore the chat state after processing a command
+# Functie om de chatstatus te herstellen na het verwerken van een commando
 def restore_chat_state(update: Update, context: CallbackContext):
     context.bot.send_chat_action(update.effective_chat.id, "typing")
 
 
-# Function to display the welcome message and available commands
+# Functie om het welkomstbericht en de beschikbare commando's weer te geven
 def start(update: Update, context: CallbackContext):
     message = "Welcome to the Chore Rota Bot!\n\n"
     message += "Available commands:\n"
     message += "/start - Display available commands\n"
     message += "/clearall - Clear all definitions\n"
     message += "/schedule - Show your scheduled days and names\n"
+    message += "/tomorrow - Show the name for tomorrow\n"
     message += "/set - Set a name for a day\n"
     message += "/who - Show the name for the current day\n"
     message += "Usage: /set <day> <name>\n"
@@ -150,32 +142,33 @@ def start(update: Update, context: CallbackContext):
 
 def main():
 
-    # Connect to the database
+    # Verbinding maken met de database
     conn = sqlite3.connect('namen.db', check_same_thread=False)
     conn.execute("CREATE TABLE IF NOT EXISTS namen (user_id INT, dag TEXT, naam TEXT, PRIMARY KEY (user_id, dag))")
 
-    # Initialize the dispatcher
+    # Initialiseren van de updater
     with open('tgb.token', 'r') as file:
         tgb_token = file.read().strip()
 
     updater = Updater(tgb_token)
     dispatcher = updater.dispatcher
 
-    # Add the database connection to bot_data
+    # Databaseverbinding toevoegen aan bot_data
     dispatcher.bot_data['conn'] = conn
 
-    # Command Handlers
+    # Commando Handlers
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("schedule", show_schedule))
     dispatcher.add_handler(CommandHandler("tomorrow", show_tomorrow))
+    dispatcher.add_handler(CommandHandler("set", set_day))
     dispatcher.add_handler(CommandHandler("who", show_name))
     dispatcher.add_handler(CommandHandler("clearall", clear_all))
 
-    # Add the MessageHandler for invalid commands
+    # MessageHandler toevoegen voor ongeldige commando's
     invalid_command_handler = MessageHandler(Filters.command, handle_invalid_command)
     dispatcher.add_handler(invalid_command_handler)
 
-    # Conversation Handler for setting name and day
+    # Conversation Handler voor het instellen van de naam en dag
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('set', set_day)],
         states={
@@ -186,10 +179,10 @@ def main():
     )
     dispatcher.add_handler(conv_handler)
 
-    # Message Handler to restore the chat state after a command
+    # Message Handler om de chatstatus te herstellen na een commando
     dispatcher.add_handler(MessageHandler(Filters.all, restore_chat_state))
 
-    # Start the bot
+    # Start de bot
     updater.start_polling()
     updater.idle()
 
