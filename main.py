@@ -9,7 +9,7 @@ user_name = None
 
 SET_DAY, SET_NAME = range(2)
 
-# Functie om alle gegevens voor de huidige Telegram-client uit de database te verwijderen
+# Functie om alle gegevens van de huidige telegram-client uit de database te verwijderen
 def clear_all(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     user_name = update.effective_user.username
@@ -21,11 +21,7 @@ def clear_all(update: Update, context: CallbackContext):
     update.message.reply_text(f"All data has been cleared for {user_name}.")
 
 
-def handle_invalid_command(update, context):
-    update.message.reply_text("Invalid command. Please use a valid command.")
-
-
-# Functie om de weekdag en bijbehorende naam voor morgen weer te geven
+# Functie om de weekdag en bijbehorende naam van morgen weer te geven
 def show_tomorrow(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     conn = context.bot_data['conn']
@@ -46,7 +42,7 @@ def show_tomorrow(update: Update, context: CallbackContext):
     update.message.reply_text(message)
 
 
-# Functie om de lijst met geplande dagen en namen weer te geven
+# Functie om de lijst met geconfigureerde dagen en namen weer te geven
 def show_schedule(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     conn = context.bot_data['conn']
@@ -64,8 +60,7 @@ def show_schedule(update: Update, context: CallbackContext):
 
     update.message.reply_text(message)
 
-
-# Functie om de naam op te halen die is gekoppeld aan de huidige dag
+# Functie om de naam op te halen die bij de huidige dag hoort
 def show_name(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
     conn = context.bot_data['conn']
@@ -83,8 +78,7 @@ def show_name(update: Update, context: CallbackContext):
 
     update.message.reply_text(message)
 
-
-# Functie om de dag en naam op te slaan in de database
+# Functie om de dag en naam in de database op te slaan
 def set_day(update: Update, context: CallbackContext):
     reply_keyboard = [['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']]
     update.message.reply_text(
@@ -94,14 +88,12 @@ def set_day(update: Update, context: CallbackContext):
 
     return SET_DAY
 
-
 def set_name(update: Update, context: CallbackContext):
     context.user_data['day'] = update.message.text
 
     update.message.reply_text("Please enter the name:")
 
     return SET_NAME
-
 
 def save_name(update: Update, context: CallbackContext):
     user_id = update.effective_user.id
@@ -119,56 +111,53 @@ def save_name(update: Update, context: CallbackContext):
 
     return ConversationHandler.END
 
-
-# Functie om de chatstatus te herstellen na het verwerken van een commando
+# Functie om de chat state te herstellen na het verwerken van een commando
 def restore_chat_state(update: Update, context: CallbackContext):
     context.bot.send_chat_action(update.effective_chat.id, "typing")
 
-
-# Functie om het welkomstbericht en de beschikbare commando's weer te geven
+# Functie om de welkomstboodschap en beschikbare commando's weer te geven
 def start(update: Update, context: CallbackContext):
     message = "Welcome to the Chore Rota Bot!\n\n"
     message += "Available commands:\n"
     message += "/start - Display available commands\n"
     message += "/clearall - Clear all definitions\n"
     message += "/schedule - Show your scheduled days and names\n"
-    message += "/tomorrow - Show the name for tomorrow\n"
     message += "/set - Set a name for a day\n"
     message += "/who - Show the name for the current day\n"
     message += "Usage: /set <day> <name>\n"
 
     update.message.reply_text(message)
 
+# Functie om ongeldige commando's af te handelen
+def handle_invalid_command(update: Update, context: CallbackContext):
+    update.message.reply_text("Invalid command. Please use a valid command.")
 
 def main():
-
-    # Verbinding maken met de database
+    # Maak een verbinding met de database
     conn = sqlite3.connect('namen.db', check_same_thread=False)
     conn.execute("CREATE TABLE IF NOT EXISTS namen (user_id INT, dag TEXT, naam TEXT, PRIMARY KEY (user_id, dag))")
 
-    # Initialiseren van de updater
+    # Dispatcher initialisatie
     with open('tgb.token', 'r') as file:
         tgb_token = file.read().strip()
 
     updater = Updater(tgb_token)
     dispatcher = updater.dispatcher
 
-    # Databaseverbinding toevoegen aan bot_data
+    # Voeg de bot_data toe voor de verbinding
     dispatcher.bot_data['conn'] = conn
 
-    # Commando Handlers
+    # Voeg de databaseverbinding toe aan bot_data
+    dispatcher.bot_data['conn'] = conn
+
+    # Command Handlers
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("schedule", show_schedule))
     dispatcher.add_handler(CommandHandler("tomorrow", show_tomorrow))
-    dispatcher.add_handler(CommandHandler("set", set_day))
     dispatcher.add_handler(CommandHandler("who", show_name))
     dispatcher.add_handler(CommandHandler("clearall", clear_all))
 
-    # MessageHandler toevoegen voor ongeldige commando's
-    invalid_command_handler = MessageHandler(Filters.command, handle_invalid_command)
-    dispatcher.add_handler(invalid_command_handler)
-
-    # Conversation Handler voor het instellen van de naam en dag
+    # Conversation Handler voor het instellen van naam en dag
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('set', set_day)],
         states={
@@ -179,13 +168,16 @@ def main():
     )
     dispatcher.add_handler(conv_handler)
 
-    # Message Handler om de chatstatus te herstellen na een commando
+    # Message Handler voor het herstellen van de chat state na een commando
     dispatcher.add_handler(MessageHandler(Filters.all, restore_chat_state))
+
+    # Voeg de MessageHandler toe voor ongeldige commando's
+    invalid_command_handler = MessageHandler(Filters.command, handle_invalid_command)
+    dispatcher.add_handler(invalid_command_handler)
 
     # Start de bot
     updater.start_polling()
     updater.idle()
-
 
 if __name__ == '__main__':
     main()
